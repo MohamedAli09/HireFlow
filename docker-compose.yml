@@ -1,0 +1,31 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  # ─── Auth Service database ────────────────────────────────────────
+  auth-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: auth_db
+      POSTGRES_USER: auth_user
+      POSTGRES_PASSWORD: auth_pass
+    ports:
+      - '5433:5432'   # host:container — 5433 so it doesn't clash with a local postgres
+    volumes:
+      - auth_db_data:/var/lib/postgresql/data
+
+  # ─── Jobs Service database ────────────────────────────────────────
+  jobs-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: jobs_db
+      POSTGRES_USER: jobs_user
+      POSTGRES_PASSWORD: jobs_pass
+    ports:
+      - '5434:5432'   # different host port — completely separate postgres instance
+    volumes:
+      - jobs_db_data:/var/lib/postgresql/data
+
+volumes:
+  auth_db_data:
+  jobs_db_data:
