@@ -6,10 +6,18 @@ import { Job } from './jobs/job.entity';
 import { JobsController } from './jobs.controller';
 import { JobsService } from './jobs.service';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: 'apps/jobs/.env' }),
+
+    JwtModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        secret: config.get('JWT_SECRET'),
+      }),
+    }),
 
     // Jobs Service connects to its own separate database
     TypeOrmModule.forRootAsync({

@@ -1,25 +1,17 @@
-import {
-    CanActivate,
-    ExecutionContext,
-    Injectable,
-    UnauthorizedException,
-    Logger,
-} from '@nestjs/common';
-import { HttpService } from '@nestjs/axios';
+// apps/jobs/src/auth/jwt-auth.guard.ts
+import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { firstValueFrom } from 'rxjs';
 import { UserPayload } from '@app/common';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-    private readonly logger = new Logger(JwtAuthGuard.name);
-
     constructor(
-        private readonly httpService: HttpService,  
+        private readonly jwtService: JwtService,
         private readonly config: ConfigService,
     ) { }
 
-    async canActivate(context: ExecutionContext): Promise<boolean> {
+    canActivate(context: ExecutionContext): boolean {
         const request = context.switchToHttp().getRequest();
         const authHeader: string = request.headers['authorization'];
 
@@ -28,24 +20,15 @@ export class JwtAuthGuard implements CanActivate {
         }
 
         try {
-            // HERE is the distributed systems reality: to verify this token,
-            // Jobs Service must make a network call to Auth Service.
-            // This means: if Auth Service is down, this guard always throws.
-            // If Auth Service is slow, this guard is slow. Every protected Jobs endpoint
-            // now has a hidden dependency on Auth Service's health.
-            const authServiceUrl = this.config.get('AUTH_SERVICE_URL');
-
-            const { data } = await firstValueFrom(
-                this.httpService.get<UserPayload>(`${authServiceUrl}/auth/verify`, {
-                    headers: { authorization: authHeader },
-                }),
-            );
-
-            // Attach the decoded user to the request so controllers can access it
-            request.user = data;
+            // Verify the token locally using the shared secret.
+            // No HTTP call, no dependency on Auth Service being alive.
+            const token = authHeader.replace('Bearer ', '');
+            const payload = this.jwtService.verify<UserPayload>(token, {
+                secret: this.config.get('JWT_SECRET'),
+            });
+            request.user = payload;
             return true;
-        } catch (error) {
-            this.logger.warn(`Token verification failed: ${error.message}`);
+        } catch {
             throw new UnauthorizedException('Invalid or expired token');
         }
     }
