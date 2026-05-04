@@ -8,6 +8,7 @@ import { ApplicationsController } from './applications.controller';
 import { ApplicationsService } from './applications.service';
 import { Application } from './applications/application.entity';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { RolesGuard } from './auth/roles.guard';
 import { JobsClient } from './jobs/jobs.client';
 
 @Module({
@@ -49,6 +50,6 @@ import { JobsClient } from './jobs/jobs.client';
     }),
   ],
   controllers: [ApplicationsController],
-  providers: [ApplicationsService, JwtAuthGuard, JobsClient],
+  providers: [ApplicationsService, JwtAuthGuard, RolesGuard, JobsClient],
 })
 export class ApplicationsModule {}
