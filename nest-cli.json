@@ -10,6 +10,15 @@
   "monorepo": true,
   "root": "apps/hireflow",
   "projects": {
+    "applications": {
+      "type": "application",
+      "root": "apps/applications",
+      "entryFile": "main",
+      "sourceRoot": "apps/applications/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/applications/tsconfig.app.json"
+      }
+    },
     "auth": {
       "type": "application",
       "root": "apps/auth",

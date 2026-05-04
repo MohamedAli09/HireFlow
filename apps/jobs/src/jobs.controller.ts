@@ -1,4 +1,3 @@
-// apps/jobs/src/jobs/jobs.controller.ts
 import { Controller, Get, Post, Body, Param, UseGuards, Request } from '@nestjs/common';
 import { JobsService, CreateJobDto } from './jobs.service';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
