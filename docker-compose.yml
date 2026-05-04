@@ -25,6 +25,16 @@ services:
       - '5434:5432' # different host port — completely separate postgres instance
     volumes:
       - jobs_db_data:/var/lib/postgresql/data
+  applications-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: applications_db
+      POSTGRES_USER: applications_user
+      POSTGRES_PASSWORD: applications_pass
+    ports:
+      - '5435:5432'
+    volumes:
+      - applications_db_data:/var/lib/postgresql/data
   rabbitmq:
     image: rabbitmq:3-management-alpine
     ports:
@@ -40,3 +50,4 @@ volumes:
   auth_db_data:
   jobs_db_data:
   rabbitmq_data:
+  applications_db_data:
