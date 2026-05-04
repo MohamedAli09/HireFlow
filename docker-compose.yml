@@ -10,7 +10,7 @@ services:
       POSTGRES_USER: auth_user
       POSTGRES_PASSWORD: auth_pass
     ports:
-      - '5433:5432'   # host:container — 5433 so it doesn't clash with a local postgres
+      - '5433:5432' # host:container — 5433 so it doesn't clash with a local postgres
     volumes:
       - auth_db_data:/var/lib/postgresql/data
 
@@ -22,10 +22,21 @@ services:
       POSTGRES_USER: jobs_user
       POSTGRES_PASSWORD: jobs_pass
     ports:
-      - '5434:5432'   # different host port — completely separate postgres instance
+      - '5434:5432' # different host port — completely separate postgres instance
     volumes:
       - jobs_db_data:/var/lib/postgresql/data
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - '5672:5672' # the port services use to publish and consume
+      - '15672:15672' # management UI — open http://localhost:15672 in your browser
+    environment:
+      RABBITMQ_DEFAULT_USER: hireflow
+      RABBITMQ_DEFAULT_PASS: hireflow_pass
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
 
 volumes:
   auth_db_data:
   jobs_db_data:
+  rabbitmq_data:
