@@ -13,7 +13,7 @@ import { RolesGuard } from './guards/roles.guard';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: 'apps/gateway/.env' }),
 
     JwtModule.registerAsync({
       inject: [ConfigService],
