@@ -1,13 +1,12 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param } from '@nestjs/common';
 import { JobsService, CreateJobDto } from './jobs.service';
-import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { CurrentUser } from '@app/common';
 import { UserPayload } from '@app/common';
 
 @Controller('jobs')
 export class JobsController {
   constructor(private readonly jobsService: JobsService) { }
 
-  // Public — anyone can browse jobs without being logged in
   @Get()
   findAll() {
     return this.jobsService.findAll();
@@ -18,10 +17,8 @@ export class JobsController {
     return this.jobsService.findOne(+id);
   }
 
-  // Protected — must be an authenticated recruiter
   @Post()
-  @UseGuards(JwtAuthGuard)   // ← this triggers the HTTP call to Auth Service
-  create(@Body() dto: CreateJobDto, @Request() req: { user: UserPayload }) {
-    return this.jobsService.create(dto, req.user);
+  create(@Body() dto: CreateJobDto, @CurrentUser() user: UserPayload) {
+    return this.jobsService.create(dto, user);
   }
 }

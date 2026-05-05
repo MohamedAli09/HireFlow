@@ -1,14 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { JwtModule } from '@nestjs/jwt';
 import { HttpModule } from '@nestjs/axios';
 import { RabbitMQModule } from '@golevelup/nestjs-rabbitmq';
 import { ApplicationsController } from './applications.controller';
 import { ApplicationsService } from './applications.service';
 import { Application } from './applications/application.entity';
-import { JwtAuthGuard } from './auth/jwt-auth.guard';
-import { RolesGuard } from './auth/roles.guard';
+import { GatewayUserGuard } from './auth/gateway-user.guard';
 import { JobsClient } from './jobs/jobs.client';
 
 @Module({
@@ -31,13 +29,6 @@ import { JobsClient } from './jobs/jobs.client';
 
     TypeOrmModule.forFeature([Application]),
 
-    JwtModule.registerAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        secret: config.get('JWT_SECRET'),
-      }),
-    }),
-
     HttpModule,
 
     RabbitMQModule.forRootAsync({
@@ -50,6 +41,6 @@ import { JobsClient } from './jobs/jobs.client';
     }),
   ],
   controllers: [ApplicationsController],
-  providers: [ApplicationsService, JwtAuthGuard, RolesGuard, JobsClient],
+  providers: [ApplicationsService, GatewayUserGuard, JobsClient],
 })
 export class ApplicationsModule {}

@@ -29,10 +29,10 @@ export class ApplicationsService {
     // Step 2 — everything comes from verified sources now
     const application = this.applicationRepo.create({
       jobId: job.id,
-      jobTitle: job.title,            // from Jobs Service ✅
-      recruiterId: job.recruiterId,   // from Jobs Service ✅
-      candidateId: +candidate.sub,     // from JWT ✅
-      candidateEmail: candidate.email, // from JWT ✅
+      jobTitle: job.title,             
+      recruiterId: job.recruiterId,   
+      candidateId: +candidate.sub,      
+      candidateEmail: candidate.email, 
     });
 
     const saved = await this.applicationRepo.save(application);

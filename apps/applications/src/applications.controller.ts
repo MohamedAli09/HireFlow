@@ -1,26 +1,21 @@
 // apps/applications/src/applications/applications.controller.ts
-import { Controller, Post, Get, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Get, Body } from '@nestjs/common';
 import { ApplicationsService, ApplyDto } from './applications.service';
-import { JwtAuthGuard } from './auth/jwt-auth.guard';
-import { RolesGuard } from './auth/roles.guard';
-import { Roles } from './auth/roles.decorator';
-import { Role, UserPayload } from '@app/common';
+import { CurrentUser, UserPayload } from '@app/common';
 
 @Controller('applications')
 export class ApplicationsController {
   constructor(private readonly applicationsService: ApplicationsService) { }
 
+  // No @UseGuards(JwtAuthGuard) — gateway already verified the token
+  // No @Request() req — @CurrentUser() reads from trusted headers
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.CANDIDATE)
-  apply(@Body() dto: ApplyDto, @Request() req: { user: UserPayload }) {
-    return this.applicationsService.apply(dto, req.user);
+  apply(@Body() dto: ApplyDto, @CurrentUser() user: UserPayload) {
+    return this.applicationsService.apply(dto, user);
   }
 
   @Get('my')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.CANDIDATE)
-  myApplications(@Request() req: { user: UserPayload }) {
-    return this.applicationsService.findByCandidate(+req.user.sub);
+  myApplications(@CurrentUser() user: UserPayload) {
+    return this.applicationsService.findByCandidate(+user.sub);
   }
 }
