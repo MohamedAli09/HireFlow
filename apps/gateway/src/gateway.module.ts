@@ -8,6 +8,7 @@ import { ProxyService } from './proxy/proxy.service';
 import { AuthController } from './routes/auth.controller';
 import { JobsController } from './routes/jobs.controller';
 import { ApplicationsController } from './routes/applications.controller';
+import { InterviewsController } from './routes/interviews.controller';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 
@@ -36,6 +37,7 @@ import { RolesGuard } from './guards/roles.guard';
     AuthController,
     JobsController,
     ApplicationsController,
+    InterviewsController,
   ],
   providers: [
     ProxyService,
