@@ -39,4 +39,23 @@ export class NotificationsConsumer {
         // The beauty of this: if this method throws an error, RabbitMQ
         // automatically requeues the message and retries. Nothing is lost.
     }
+
+    @RabbitSubscribe({
+        exchange: 'hireflow',
+        routingKey: 'interview.scheduled',
+        queue: 'notifications.interview.scheduled',
+    })
+    async handleInterviewScheduled(event: {
+        interviewId: number;
+        candidateEmail: string;
+        jobTitle: string;
+        scheduledAt: string;
+        meetingLink?: string;
+    }): Promise<void> {
+        this.logger.log(
+            `📧 EMAIL TO CANDIDATE (${event.candidateEmail}): ` +
+            `Interview scheduled for "${event.jobTitle}" on ${event.scheduledAt}. ` +
+            `${event.meetingLink ? 'Meeting link: ' + event.meetingLink : ''}`,
+        );
+    }
 }

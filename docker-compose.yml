@@ -35,6 +35,17 @@ services:
       - '5435:5432'
     volumes:
       - applications_db_data:/var/lib/postgresql/data
+  interviews-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: interviews_db
+      POSTGRES_USER: interviews_user
+      POSTGRES_PASSWORD: interviews_pass
+    ports:
+      - '5436:5432'
+    volumes:
+      - interviews_db_data:/var/lib/postgresql/data
+
   rabbitmq:
     image: rabbitmq:3-management-alpine
     ports:
@@ -51,3 +62,4 @@ volumes:
   jobs_db_data:
   rabbitmq_data:
   applications_db_data:
+  interviews_db_data:
