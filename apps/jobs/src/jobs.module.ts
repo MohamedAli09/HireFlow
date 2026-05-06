@@ -34,9 +34,14 @@ import { JobsConsumer } from './jobs/jobs.consumer';
     RabbitMQModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        exchanges: [{ name: 'hireflow.exchange', type: 'topic' }],
+        exchanges: [
+          { name: 'hireflow.exchange', type: 'topic' },
+          { name: 'hireflow.dlx', type: 'topic' },
+        ],
         uri: config.get<string>('RABBITMQ_URL')!,
         connectionInitOptions: { wait: false },
+        // Process one message at a time — prevents parallel retry storms when DB is broken.
+        prefetchCount: 1,
       }),
     }),
   ],

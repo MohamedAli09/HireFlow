@@ -28,6 +28,10 @@ export class JobsConsumer {
         exchange: 'hireflow.exchange',
         routingKey: 'application.created',
         queue: 'jobs.application.created',
+        queueOptions: {
+            deadLetterExchange: 'hireflow.dlx',
+            deadLetterRoutingKey: 'jobs.application.created.dead',
+        },
     })
     async handleApplicationCreated(event: ApplicationCreatedEvent): Promise<void | Nack> {
         this.logger.log(`Updating applicant count for job #${event.jobId}`);
@@ -50,10 +54,7 @@ export class JobsConsumer {
             }
 
             // Happy path — increment the count
-            await this.jobRepo.update(
-                { id: event.jobId },
-                { applicantCount: () => 'applicant_count + 1' },
-            );
+            await this.jobRepo.increment({ id: event.jobId }, 'applicantCount', 1);
 
             // Publish success event — triggers next step (Notifications emails recruiter)
             await this.amqpConnection.publish(
@@ -73,11 +74,11 @@ export class JobsConsumer {
         } catch (error) {
             this.logger.error(`Failed to update applicant count: ${error.message}`);
 
-            // Transient failure (e.g. DB temporarily unavailable) — requeue for retry.
-            // Do NOT compensate here: compensation cancels the application permanently,
-            // which would conflict if the retry succeeds and publishes applicant.count.updated.
-            // Compensation only belongs in permanent failure paths above.
-            return new Nack(true);
+            // Only requeue for transient failures (connection lost, timeout).
+            // Query errors (wrong column, constraint violation) are permanent — dead-letter them
+            // so they don't spin in an infinite retry loop.
+            const isTransient = error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT';
+            return new Nack(isTransient);
         }
     }
 
