@@ -10,6 +10,7 @@ import { GatewayUserGuard } from './auth/gateway-user.guard';
 import { JobsClient } from './jobs/jobs.client';
 import { ApplyHandler } from './applications/commands/apply.handler';
 import { GetMyApplicationsHandler } from './applications/queries/get-my-applications.handler';
+import { ApplicationsConsumer } from './applications/applications.consumer';
 
 @Module({
   imports: [
@@ -43,6 +44,6 @@ import { GetMyApplicationsHandler } from './applications/queries/get-my-applicat
     }),
   ],
   controllers: [ApplicationsController],
-  providers: [GatewayUserGuard, JobsClient, ApplyHandler, GetMyApplicationsHandler],
+  providers: [GatewayUserGuard, JobsClient, ApplyHandler, GetMyApplicationsHandler, ApplicationsConsumer],
 })
-export class ApplicationsModule {}
+export class ApplicationsModule { }

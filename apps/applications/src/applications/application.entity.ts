@@ -5,7 +5,8 @@ export enum ApplicationStatus {
     REVIEWING = 'reviewing',
     INTERVIEW = 'interview',
     OFFERED = 'offered',
-    REJECTED = 'rejected',
+    REJECTED = 'rejected',    // business decision — notify candidate
+    CANCELLED = 'cancelled',   // technical failure — do NOT notify candidate
 }
 
 @Entity('applications')

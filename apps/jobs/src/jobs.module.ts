@@ -2,11 +2,13 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CqrsModule } from '@nestjs/cqrs';
+import { RabbitMQModule } from '@golevelup/nestjs-rabbitmq';
 import { Job } from './jobs/job.entity';
 import { JobsController } from './jobs.controller';
 import { CreateJobHandler } from './jobs/commands/create-job.handler';
 import { GetActiveJobsHandler } from './jobs/queries/get-active-jobs.handler';
 import { GetJobByIdHandler } from './jobs/queries/get-job-by-id.handler';
+import { JobsConsumer } from './jobs/jobs.consumer';
 
 @Module({
   imports: [
@@ -28,8 +30,17 @@ import { GetJobByIdHandler } from './jobs/queries/get-job-by-id.handler';
 
     TypeOrmModule.forFeature([Job]),
     CqrsModule,
+
+    RabbitMQModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        exchanges: [{ name: 'hireflow.exchange', type: 'topic' }],
+        uri: config.get<string>('RABBITMQ_URL')!,
+        connectionInitOptions: { wait: false },
+      }),
+    }),
   ],
   controllers: [JobsController],
-  providers: [CreateJobHandler, GetActiveJobsHandler, GetJobByIdHandler],
+  providers: [CreateJobHandler, GetActiveJobsHandler, GetJobByIdHandler, JobsConsumer],
 })
 export class JobsModule { }

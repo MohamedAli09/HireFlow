@@ -1,7 +1,7 @@
 // apps/jobs/src/jobs/job.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
 
-@Entity('jobs') 
+@Entity('jobs')
 export class Job {
   @PrimaryGeneratedColumn()
   id!: number;
@@ -25,6 +25,9 @@ export class Job {
   // We only keep the ID as a reference. The name lives in Auth Service.
   @Column()
   recruiterId!: number;
+
+  @Column({ default: 0 })
+  applicantCount!: number;
 
   @Column({ default: true })
   isActive!: boolean;

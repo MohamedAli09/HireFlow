@@ -1,16 +1,9 @@
-import { RabbitSubscribe } from '@golevelup/nestjs-rabbitmq';
+import { RabbitSubscribe, Nack } from '@golevelup/nestjs-rabbitmq';
 import { Injectable, Logger } from '@nestjs/common';
 
 // This is the shape of the event Applications Service publishes.
 // Both services agree on this contract — it's what makes event-driven work.
-interface ApplicationCreatedEvent {
-    applicationId: number;
-    jobId: number;
-    jobTitle: string;
-    candidateEmail: string;
-    recruiterId: number;
-    appliedAt: Date;
-}
+
 
 @Injectable()
 export class NotificationsConsumer {
@@ -20,28 +13,38 @@ export class NotificationsConsumer {
     // 'application.created' arrives on 'hireflow.exchange', call this method."
     // The queue name is unique to this consumer — multiple consumers can each
     // have their own queue receiving the same events independently.
+    // apps/notifications/src/notifications/notifications.consumer.ts
+    // Replace the application.created handler with applicant.count.updated
+
     @RabbitSubscribe({
         exchange: 'hireflow.exchange',
-        routingKey: 'application.created',
-        queue: 'notifications.application.created',
+        routingKey: 'applicant.count.updated',   // ← changed from application.created
+        queue: 'notifications.applicant.count.updated',
     })
-    async handleApplicationCreated(event: ApplicationCreatedEvent): Promise<void> {
-        this.logger.log(`Processing application.created for job: ${event.jobTitle}`);
+    async handleApplicantCountUpdated(event: {
+        applicationId: number;
+        jobTitle: string;
+        candidateEmail: string;
+        recruiterId: number;
+    }): Promise<void | Nack> {
+        this.logger.log(`Sending recruiter notification for application #${event.applicationId}`);
 
-        // In a real system, you'd use Nodemailer or SendGrid here.
-        // For now, we log the email that would be sent so you can see the flow working.
-        this.logger.log(
-            `📧 EMAIL TO RECRUITER (id: ${event.recruiterId}): ` +
-            `"${event.candidateEmail}" just applied to "${event.jobTitle}" ` +
-            `(Application #${event.applicationId})`
-        );
-
-        // The beauty of this: if this method throws an error, RabbitMQ
-        // automatically requeues the message and retries. Nothing is lost.
+        try {
+            // Only reaches here if Jobs Service successfully updated the count.
+            // We know the application is in a valid, consistent state.
+            this.logger.log(
+                `📧 EMAIL TO RECRUITER (id: ${event.recruiterId}): ` +
+                `"${event.candidateEmail}" applied to "${event.jobTitle}" ` +
+                `(Application #${event.applicationId})`
+            );
+        } catch (error) {
+            this.logger.error(`Failed to send recruiter notification: ${error.message}`);
+            return new Nack(true);
+        }
     }
 
     @RabbitSubscribe({
-        exchange: 'hireflow',
+        exchange: 'hireflow.exchange',
         routingKey: 'interview.scheduled',
         queue: 'notifications.interview.scheduled',
     })
@@ -51,11 +54,16 @@ export class NotificationsConsumer {
         jobTitle: string;
         scheduledAt: string;
         meetingLink?: string;
-    }): Promise<void> {
-        this.logger.log(
-            `📧 EMAIL TO CANDIDATE (${event.candidateEmail}): ` +
-            `Interview scheduled for "${event.jobTitle}" on ${event.scheduledAt}. ` +
-            `${event.meetingLink ? 'Meeting link: ' + event.meetingLink : ''}`,
-        );
+    }): Promise<void | Nack> {
+        try {
+            this.logger.log(
+                `📧 EMAIL TO CANDIDATE (${event.candidateEmail}): ` +
+                `Interview scheduled for "${event.jobTitle}" on ${event.scheduledAt}. ` +
+                `${event.meetingLink ? 'Meeting link: ' + event.meetingLink : ''}`,
+            );
+        } catch (error) {
+            this.logger.error(`Failed to send candidate notification: ${error.message}`);
+            return new Nack(true);
+        }
     }
 }
