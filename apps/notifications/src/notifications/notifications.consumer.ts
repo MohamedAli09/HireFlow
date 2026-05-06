@@ -18,8 +18,12 @@ export class NotificationsConsumer {
 
     @RabbitSubscribe({
         exchange: 'hireflow.exchange',
-        routingKey: 'applicant.count.updated',   // ← changed from application.created
+        routingKey: 'applicant.count.updated',
         queue: 'notifications.applicant.count.updated',
+        queueOptions: {
+            deadLetterExchange: 'hireflow.dlx',
+            deadLetterRoutingKey: 'notifications.applicant.count.updated.dead',
+        },
     })
     async handleApplicantCountUpdated(event: {
         applicationId: number;
@@ -30,8 +34,6 @@ export class NotificationsConsumer {
         this.logger.log(`Sending recruiter notification for application #${event.applicationId}`);
 
         try {
-            // Only reaches here if Jobs Service successfully updated the count.
-            // We know the application is in a valid, consistent state.
             this.logger.log(
                 `📧 EMAIL TO RECRUITER (id: ${event.recruiterId}): ` +
                 `"${event.candidateEmail}" applied to "${event.jobTitle}" ` +
@@ -39,7 +41,8 @@ export class NotificationsConsumer {
             );
         } catch (error) {
             this.logger.error(`Failed to send recruiter notification: ${error.message}`);
-            return new Nack(true);
+            const isTransient = error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT';
+            return new Nack(isTransient);
         }
     }
 
@@ -47,6 +50,10 @@ export class NotificationsConsumer {
         exchange: 'hireflow.exchange',
         routingKey: 'interview.scheduled',
         queue: 'notifications.interview.scheduled',
+        queueOptions: {
+            deadLetterExchange: 'hireflow.dlx',
+            deadLetterRoutingKey: 'notifications.interview.scheduled.dead',
+        },
     })
     async handleInterviewScheduled(event: {
         interviewId: number;
@@ -63,7 +70,8 @@ export class NotificationsConsumer {
             );
         } catch (error) {
             this.logger.error(`Failed to send candidate notification: ${error.message}`);
-            return new Nack(true);
+            const isTransient = error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT';
+            return new Nack(isTransient);
         }
     }
 }

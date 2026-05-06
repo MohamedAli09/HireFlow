@@ -12,9 +12,13 @@ import { NotificationsConsumer } from './notifications/notifications.consumer';
     RabbitMQModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        exchanges: [{ name: 'hireflow.exchange', type: 'topic' }],
+        exchanges: [
+          { name: 'hireflow.exchange', type: 'topic' },
+          { name: 'hireflow.dlx', type: 'topic' },
+        ],
         uri: config.get<string>('RABBITMQ_URL')!,
         connectionInitOptions: { wait: false },
+        prefetchCount: 1,
       }),
     }),
   ],

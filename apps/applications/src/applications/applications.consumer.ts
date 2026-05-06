@@ -25,7 +25,11 @@ export class ApplicationsConsumer {
     @RabbitSubscribe({
         exchange: 'hireflow.exchange',
         routingKey: 'applicant.count.failed',
-        queue: 'applications.applicant.count.failed', 
+        queue: 'applications.applicant.count.failed',
+        queueOptions: {
+            deadLetterExchange: 'hireflow.dlx',
+            deadLetterRoutingKey: 'applications.applicant.count.failed.dead',
+        },
     })
     async handleApplicantCountFailed(event: ApplicantCountFailedEvent): Promise<void | Nack> {
         this.logger.warn(
@@ -48,9 +52,11 @@ export class ApplicationsConsumer {
             );
         } catch (error) {
             this.logger.error(`Compensation failed: ${error.message}`);
-            // Nack tells RabbitMQ to requeue this message and retry
-            // We never want to lose a compensation event
-            return new Nack(true);
+            // Transient DB errors: requeue and retry.
+            // Permanent errors: dead-letter to hireflow.dlx — message is NOT lost, just parked
+            // for manual inspection and replay once the underlying issue is fixed.
+            const isTransient = error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT';
+            return new Nack(isTransient);
         }
     }
 }
