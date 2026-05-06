@@ -6,7 +6,6 @@ import { CqrsModule } from '@nestjs/cqrs';
 import { RabbitMQModule } from '@golevelup/nestjs-rabbitmq';
 import { ApplicationsController } from './applications.controller';
 import { Application } from './applications/application.entity';
-import { GatewayUserGuard } from './auth/gateway-user.guard';
 import { JobsClient } from './jobs/jobs.client';
 import { ApplyHandler } from './applications/commands/apply.handler';
 import { GetMyApplicationsHandler } from './applications/queries/get-my-applications.handler';
@@ -44,6 +43,6 @@ import { ApplicationsConsumer } from './applications/applications.consumer';
     }),
   ],
   controllers: [ApplicationsController],
-  providers: [GatewayUserGuard, JobsClient, ApplyHandler, GetMyApplicationsHandler, ApplicationsConsumer],
+  providers: [JobsClient, ApplyHandler, GetMyApplicationsHandler, ApplicationsConsumer],
 })
 export class ApplicationsModule { }
