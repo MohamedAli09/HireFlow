@@ -1,9 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { CqrsModule } from '@nestjs/cqrs';
 import { Job } from './jobs/job.entity';
 import { JobsController } from './jobs.controller';
-import { JobsService } from './jobs.service';
+import { CreateJobHandler } from './jobs/commands/create-job.handler';
+import { GetActiveJobsHandler } from './jobs/queries/get-active-jobs.handler';
+import { GetJobByIdHandler } from './jobs/queries/get-job-by-id.handler';
 
 @Module({
   imports: [
@@ -24,8 +27,9 @@ import { JobsService } from './jobs.service';
     }),
 
     TypeOrmModule.forFeature([Job]),
+    CqrsModule,
   ],
   controllers: [JobsController],
-  providers: [JobsService],
+  providers: [CreateJobHandler, GetActiveJobsHandler, GetJobByIdHandler],
 })
 export class JobsModule { }

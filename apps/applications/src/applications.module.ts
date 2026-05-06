@@ -2,12 +2,14 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { HttpModule } from '@nestjs/axios';
+import { CqrsModule } from '@nestjs/cqrs';
 import { RabbitMQModule } from '@golevelup/nestjs-rabbitmq';
 import { ApplicationsController } from './applications.controller';
-import { ApplicationsService } from './applications.service';
 import { Application } from './applications/application.entity';
 import { GatewayUserGuard } from './auth/gateway-user.guard';
 import { JobsClient } from './jobs/jobs.client';
+import { ApplyHandler } from './applications/commands/apply.handler';
+import { GetMyApplicationsHandler } from './applications/queries/get-my-applications.handler';
 
 @Module({
   imports: [
@@ -28,8 +30,8 @@ import { JobsClient } from './jobs/jobs.client';
     }),
 
     TypeOrmModule.forFeature([Application]),
-
     HttpModule,
+    CqrsModule,
 
     RabbitMQModule.forRootAsync({
       inject: [ConfigService],
@@ -41,6 +43,6 @@ import { JobsClient } from './jobs/jobs.client';
     }),
   ],
   controllers: [ApplicationsController],
-  providers: [ApplicationsService, GatewayUserGuard, JobsClient],
+  providers: [GatewayUserGuard, JobsClient, ApplyHandler, GetMyApplicationsHandler],
 })
 export class ApplicationsModule {}

@@ -1,21 +1,25 @@
-// apps/applications/src/applications/applications.controller.ts
 import { Controller, Post, Get, Body } from '@nestjs/common';
-import { ApplicationsService, ApplyDto } from './applications.service';
+import { CommandBus, QueryBus } from '@nestjs/cqrs';
+import { ApplyCommand } from './applications/commands/apply.command';
+import { GetMyApplicationsQuery } from './applications/queries/get-my-applications.query';
 import { CurrentUser, UserPayload } from '@app/common';
 
 @Controller('applications')
 export class ApplicationsController {
-  constructor(private readonly applicationsService: ApplicationsService) { }
+  constructor(
+    private readonly commandBus: CommandBus,
+    private readonly queryBus: QueryBus,
+  ) {}
 
-  // No @UseGuards(JwtAuthGuard) — gateway already verified the token
-  // No @Request() req — @CurrentUser() reads from trusted headers
   @Post()
-  apply(@Body() dto: ApplyDto, @CurrentUser() user: UserPayload) {
-    return this.applicationsService.apply(dto, user);
+  apply(@Body() body: { jobId: number }, @CurrentUser() user: UserPayload) {
+    return this.commandBus.execute(
+      new ApplyCommand(body.jobId, +user.sub, user.email),
+    );
   }
 
   @Get('my')
   myApplications(@CurrentUser() user: UserPayload) {
-    return this.applicationsService.findByCandidate(+user.sub);
+    return this.queryBus.execute(new GetMyApplicationsQuery(+user.sub));
   }
 }
