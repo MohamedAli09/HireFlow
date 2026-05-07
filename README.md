@@ -48,7 +48,7 @@ A production-shaped hiring platform built with event-driven microservices archit
 | Jobs Service | 3002 | PostgreSQL :5434 | Job posting and search (CQRS) |
 | Applications Service | 3003 | PostgreSQL :5435 | Apply to jobs, Saga orchestration |
 | Interviews Service | 3004 | PostgreSQL :5436 | Schedule interviews |
-| Notifications Service | — | — | Pure event consumer, emails |
+| Notifications Service | 3005 | — | Pure event consumer, emails |
 
 ---
 
