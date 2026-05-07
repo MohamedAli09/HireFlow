@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateJobCommand } from './create-job.command';
 import { Job } from '../job.entity';
+import { CorrelationLogger } from '@app/common';
 
 @CommandHandler(CreateJobCommand)
 export class CreateJobHandler implements ICommandHandler<CreateJobCommand> {
@@ -12,8 +13,8 @@ export class CreateJobHandler implements ICommandHandler<CreateJobCommand> {
     ) { }
 
     async execute(command: CreateJobCommand): Promise<Job> {
-        // The handler owns the write logic completely.
-        // It uses the full Job entity with all its fields and validation.
+        const logger = new CorrelationLogger(CreateJobHandler.name, command.correlationId ?? 'no-correlation');
+
         const job = this.jobRepo.create({
             title: command.title,
             description: command.description,
@@ -23,6 +24,9 @@ export class CreateJobHandler implements ICommandHandler<CreateJobCommand> {
             salaryMax: command.salaryMax,
         });
 
-        return this.jobRepo.save(job);
+        const saved = await this.jobRepo.save(job);
+        logger.log(`Job #${saved.id} "${saved.title}" created by recruiter #${command.recruiterId}`);
+
+        return saved;
     }
 }

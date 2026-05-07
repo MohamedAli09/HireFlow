@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { ScheduleInterviewCommand } from './schedule-interview.command';
 import { Interview } from '../interview.entity';
+import { CorrelationLogger } from '@app/common';
 
 @CommandHandler(ScheduleInterviewCommand)
 export class ScheduleInterviewHandler implements ICommandHandler<ScheduleInterviewCommand> {
@@ -14,6 +15,8 @@ export class ScheduleInterviewHandler implements ICommandHandler<ScheduleIntervi
   ) {}
 
   async execute(command: ScheduleInterviewCommand): Promise<Interview> {
+    const logger = new CorrelationLogger(ScheduleInterviewHandler.name, command.correlationId ?? 'no-correlation');
+
     const interview = this.interviewRepo.create({
       applicationId: command.applicationId,
       candidateId: command.candidateId,
@@ -25,6 +28,7 @@ export class ScheduleInterviewHandler implements ICommandHandler<ScheduleIntervi
     });
 
     const saved = await this.interviewRepo.save(interview);
+    logger.log(`Interview #${saved.id} scheduled for application #${command.applicationId}`);
 
     await this.amqpConnection.publish('hireflow', 'interview.scheduled', {
       interviewId: saved.id,
@@ -32,6 +36,7 @@ export class ScheduleInterviewHandler implements ICommandHandler<ScheduleIntervi
       jobTitle: saved.jobTitle,
       scheduledAt: saved.scheduledAt,
       meetingLink: saved.meetingLink,
+      correlationId: command.correlationId,
     });
 
     return saved;

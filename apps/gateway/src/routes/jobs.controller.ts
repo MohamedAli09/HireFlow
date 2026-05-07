@@ -16,20 +16,20 @@ export class JobsController {
     // Public — anyone can browse jobs without a token
     @Get()
     @Public()
-    findAll() {
-        return this.proxy.forward('GET', `${this.config.get('JOBS_SERVICE_URL')}/jobs`, null);
+    findAll(@Request() req: any) {
+        return this.proxy.forward('GET', `${this.config.get('JOBS_SERVICE_URL')}/jobs`, null, undefined, req['correlationId']);
     }
 
     @Get(':id')
     @Public()
-    findOne(@Param('id') id: string) {
-        return this.proxy.forward('GET', `${this.config.get('JOBS_SERVICE_URL')}/jobs/${id}`, null);
+    findOne(@Param('id') id: string, @Request() req: any) {
+        return this.proxy.forward('GET', `${this.config.get('JOBS_SERVICE_URL')}/jobs/${id}`, null, undefined, req['correlationId']); 
     }
 
     // Only recruiters can post jobs — enforced once here, not in Jobs Service
     @Post()
     @Roles(Role.RECRUITER, Role.ADMIN)
-    create(@Body() body: any, @Request() req: any   ) {
-        return this.proxy.forward('POST', `${this.config.get('JOBS_SERVICE_URL')}/jobs`, body, req.user);
+    create(@Body() body: any, @Request() req: any) {
+        return this.proxy.forward('POST', `${this.config.get('JOBS_SERVICE_URL')}/jobs`, body, req.user, req['correlationId']);
     }
 }

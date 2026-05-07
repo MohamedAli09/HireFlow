@@ -8,13 +8,14 @@ import { UserPayload } from '@app/common';
 export class ProxyService {
   private readonly logger = new Logger(ProxyService.name);
 
-  constructor(private readonly httpService: HttpService) {}
+  constructor(private readonly httpService: HttpService) { }
 
   async forward(
     method: string,
     targetUrl: string,
     body: any,
     user?: UserPayload,   // decoded user from JWT — may be undefined for public routes
+    correlationId?: string
   ): Promise<any> {
     // Build the headers we forward to the downstream service.
     // This is how services know who is making the request —
@@ -30,7 +31,9 @@ export class ProxyService {
       headers['x-user-email'] = user.email;
       headers['x-user-role'] = user.role;
     }
-
+    if (correlationId) {
+      headers['x-correlation-id'] = correlationId;
+    }
     const config: AxiosRequestConfig = { headers };
 
     try {
@@ -40,10 +43,10 @@ export class ProxyService {
         method === 'GET'
           ? this.httpService.get(targetUrl, config)
           : method === 'POST'
-          ? this.httpService.post(targetUrl, body, config)
-          : method === 'PATCH'
-          ? this.httpService.patch(targetUrl, body, config)
-          : this.httpService.delete(targetUrl, config),
+            ? this.httpService.post(targetUrl, body, config)
+            : method === 'PATCH'
+              ? this.httpService.patch(targetUrl, body, config)
+              : this.httpService.delete(targetUrl, config),
       );
 
       return response.data;

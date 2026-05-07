@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body } from '@nestjs/common';
+import { Controller, Post, Get, Body, Headers } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ApplyCommand } from './applications/commands/apply.command';
 import { GetMyApplicationsQuery } from './applications/queries/get-my-applications.query';
@@ -12,9 +12,13 @@ export class ApplicationsController {
   ) {}
 
   @Post()
-  apply(@Body() body: { jobId: number }, @CurrentUser() user: UserPayload) {
+  apply(
+    @Body() body: { jobId: number },
+    @CurrentUser() user: UserPayload,
+    @Headers('x-correlation-id') correlationId: string,
+  ) {
     return this.commandBus.execute(
-      new ApplyCommand(body.jobId, +user.sub, user.email),
+      new ApplyCommand(body.jobId, +user.sub, user.email, correlationId),
     );
   }
 

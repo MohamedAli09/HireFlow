@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Param, ParseIntPipe, Headers } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { CreateJobCommand } from './jobs/commands/create-job.command';
 import { GetActiveJobsQuery } from './jobs/queries/get-active-jobs.query';
@@ -27,7 +27,11 @@ export class JobsController {
   }
 
   @Post()
-  create(@Body() body: any, @CurrentUser() user: UserPayload) {
+  create(
+    @Body() body: any,
+    @CurrentUser() user: UserPayload,
+    @Headers('x-correlation-id') correlationId: string,
+  ) {
     return this.commandBus.execute(
       new CreateJobCommand(
         body.title,
@@ -36,6 +40,7 @@ export class JobsController {
         +user.sub,
         body.salaryMin,
         body.salaryMax,
+        correlationId,
       ),
     );
   }

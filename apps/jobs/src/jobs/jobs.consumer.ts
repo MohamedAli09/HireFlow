@@ -1,9 +1,10 @@
 // apps/jobs/src/jobs/jobs.consumer.ts
 import { RabbitSubscribe, AmqpConnection, Nack } from '@golevelup/nestjs-rabbitmq';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Job } from './job.entity';
+import { CorrelationLogger } from '@app/common';
 
 interface ApplicationCreatedEvent {
     applicationId: number;
@@ -12,12 +13,11 @@ interface ApplicationCreatedEvent {
     candidateEmail: string;
     recruiterId: number;
     appliedAt: Date;
+    correlationId?: string;
 }
 
 @Injectable()
 export class JobsConsumer {
-    private readonly logger = new Logger(JobsConsumer.name);
-
     constructor(
         @InjectRepository(Job)
         private readonly jobRepo: Repository<Job>,
@@ -34,29 +34,24 @@ export class JobsConsumer {
         },
     })
     async handleApplicationCreated(event: ApplicationCreatedEvent): Promise<void | Nack> {
-        this.logger.log(`Updating applicant count for job #${event.jobId}`);
+        const logger = new CorrelationLogger(JobsConsumer.name, event.correlationId ?? 'no-correlation');
+        logger.log(`Updating applicant count for job #${event.jobId}`);
 
         try {
             const job = await this.jobRepo.findOne({ where: { id: event.jobId } });
 
             if (!job) {
-                // Job doesn't exist — this is a permanent failure, no point retrying.
-                // Trigger compensation immediately.
-                await this.publishCompensation(event.applicationId, `Job #${event.jobId} not found`);
+                await this.publishCompensation(event.applicationId, `Job #${event.jobId} not found`, event.correlationId);
                 return;
             }
 
             if (!job.isActive) {
-                // Job was closed between application submission and this event being processed.
-                // Trigger compensation — application should be cancelled.
-                await this.publishCompensation(event.applicationId, `Job #${event.jobId} is no longer active`);
+                await this.publishCompensation(event.applicationId, `Job #${event.jobId} is no longer active`, event.correlationId);
                 return;
             }
 
-            // Happy path — increment the count
             await this.jobRepo.increment({ id: event.jobId }, 'applicantCount', 1);
 
-            // Publish success event — triggers next step (Notifications emails recruiter)
             await this.amqpConnection.publish(
                 'hireflow.exchange',
                 'applicant.count.updated',
@@ -67,27 +62,25 @@ export class JobsConsumer {
                     candidateEmail: event.candidateEmail,
                     recruiterId: event.recruiterId,
                     appliedAt: event.appliedAt,
+                    correlationId: event.correlationId,
                 },
             );
 
-            this.logger.log(`Applicant count updated for job #${event.jobId} ✅`);
+            logger.log(`Applicant count updated for job #${event.jobId}`);
         } catch (error) {
-            this.logger.error(`Failed to update applicant count: ${error.message}`);
-
-            // Only requeue for transient failures (connection lost, timeout).
-            // Query errors (wrong column, constraint violation) are permanent — dead-letter them
-            // so they don't spin in an infinite retry loop.
+            logger.error(`Failed to update applicant count: ${error.message}`);
             const isTransient = error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT';
             return new Nack(isTransient);
         }
     }
 
-    private async publishCompensation(applicationId: number, reason: string): Promise<void> {
+    private async publishCompensation(applicationId: number, reason: string, correlationId?: string): Promise<void> {
+        const logger = new CorrelationLogger(JobsConsumer.name, correlationId ?? 'no-correlation');
         await this.amqpConnection.publish(
             'hireflow.exchange',
-            'applicant.count.failed',   // compensation event — Applications Service listens
-            { applicationId, reason },
+            'applicant.count.failed',
+            { applicationId, reason, correlationId },
         );
-        this.logger.warn(`Compensation event published for application #${applicationId}`);
+        logger.warn(`Compensation event published for application #${applicationId}: ${reason}`);
     }
 }

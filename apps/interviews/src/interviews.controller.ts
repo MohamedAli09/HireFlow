@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body } from '@nestjs/common';
+import { Controller, Post, Get, Body, Headers } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ScheduleInterviewCommand } from './interviews/commands/schedule-interview.command';
 import { GetMyInterviewsQuery } from './interviews/queries/get-my-interviews.query';
@@ -22,6 +22,7 @@ export class InterviewsController {
       meetingLink?: string;
     },
     @CurrentUser() user: UserPayload,
+    @Headers('x-correlation-id') correlationId: string,
   ) {
     return this.commandBus.execute(
       new ScheduleInterviewCommand(
@@ -32,6 +33,7 @@ export class InterviewsController {
         body.scheduledAt,
         +user.sub,
         body.meetingLink,
+        correlationId,
       ),
     );
   }

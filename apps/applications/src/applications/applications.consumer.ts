@@ -1,27 +1,24 @@
 // apps/applications/src/applications/applications.consumer.ts
 import { RabbitSubscribe, Nack } from '@golevelup/nestjs-rabbitmq';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Application, ApplicationStatus } from './application.entity';
+import { CorrelationLogger } from '@app/common';
 
 interface ApplicantCountFailedEvent {
     applicationId: number;
     reason: string;
+    correlationId?: string;
 }
 
 @Injectable()
 export class ApplicationsConsumer {
-    private readonly logger = new Logger(ApplicationsConsumer.name);
-
     constructor(
         @InjectRepository(Application)
         private readonly applicationRepo: Repository<Application>,
     ) { }
 
-    // This is the compensation handler.
-    // When Jobs Service fails to update the count, it publishes this event.
-    // Applications Service listens and cancels the application — restoring consistency.
     @RabbitSubscribe({
         exchange: 'hireflow.exchange',
         routingKey: 'applicant.count.failed',
@@ -32,9 +29,8 @@ export class ApplicationsConsumer {
         },
     })
     async handleApplicantCountFailed(event: ApplicantCountFailedEvent): Promise<void | Nack> {
-        this.logger.warn(
-            `Compensation triggered for application #${event.applicationId}: ${event.reason}`
-        );
+        const logger = new CorrelationLogger(ApplicationsConsumer.name, event.correlationId ?? 'no-correlation');
+        logger.warn(`Compensation triggered for application #${event.applicationId}: ${event.reason}`);
 
         try {
             await this.applicationRepo.update(
@@ -42,19 +38,10 @@ export class ApplicationsConsumer {
                 { status: ApplicationStatus.CANCELLED },
             );
 
-            this.logger.warn(
-                `Application #${event.applicationId} cancelled — data consistent again`
-            );
-
-            // Internal alert — in production this would page your engineering team
-            this.logger.error(
-                `SAGA COMPENSATION: application #${event.applicationId} cancelled due to: ${event.reason}`
-            );
+            logger.warn(`Application #${event.applicationId} cancelled — data consistent again`);
+            logger.error(`SAGA COMPENSATION: application #${event.applicationId} cancelled due to: ${event.reason}`);
         } catch (error) {
-            this.logger.error(`Compensation failed: ${error.message}`);
-            // Transient DB errors: requeue and retry.
-            // Permanent errors: dead-letter to hireflow.dlx — message is NOT lost, just parked
-            // for manual inspection and replay once the underlying issue is fixed.
+            logger.error(`Compensation failed: ${error.message}`);
             const isTransient = error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT';
             return new Nack(isTransient);
         }

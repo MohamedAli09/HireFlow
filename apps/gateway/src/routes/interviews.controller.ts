@@ -23,6 +23,7 @@ export class InterviewsController {
             `${this.config.get('INTERVIEWS_SERVICE_URL')}/interviews`,
             body,
             req.user,
+            req['correlationId'],
         );
     }
 
@@ -33,6 +34,7 @@ export class InterviewsController {
             `${this.config.get('INTERVIEWS_SERVICE_URL')}/interviews/my`,
             null,
             req.user,
+            req['correlationId'],
         );
     }
 }

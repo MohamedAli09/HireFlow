@@ -22,6 +22,7 @@ export class ApplicationsController {
             `${this.config.get('APPLICATIONS_SERVICE_URL')}/applications`,
             body,
             req.user,
+            req['correlationId'],
         );
     }
 
@@ -33,6 +34,7 @@ export class ApplicationsController {
             `${this.config.get('APPLICATIONS_SERVICE_URL')}/applications/my`,
             null,
             req.user,
+            req['correlationId'],
         );
     }
 }

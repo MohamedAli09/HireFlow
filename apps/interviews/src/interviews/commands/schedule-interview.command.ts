@@ -7,5 +7,6 @@ export class ScheduleInterviewCommand {
     public readonly scheduledAt: Date,
     public readonly recruiterId: number,
     public readonly meetingLink?: string,
+    public readonly correlationId?: string,
   ) {}
 }

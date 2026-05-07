@@ -10,5 +10,6 @@ export class CreateJobCommand {
         public readonly recruiterId: number,
         public readonly salaryMin?: number,
         public readonly salaryMax?: number,
+        public readonly correlationId?: string,
     ) { }
 }

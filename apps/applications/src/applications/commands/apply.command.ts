@@ -3,5 +3,6 @@ export class ApplyCommand {
     public readonly jobId: number,
     public readonly candidateId: number,
     public readonly candidateEmail: string,
-  ) {}
+    public readonly correlationId?: string,
+  ) { }
 }
