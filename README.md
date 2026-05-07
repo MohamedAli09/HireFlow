@@ -31,9 +31,9 @@ A production-shaped hiring platform built with event-driven microservices archit
                         └───────────────────────────────┬──┘
                                                         │
                                               ┌─────────▼────────┐
-                                              │  Notifications   │
-                                              │  (no HTTP port)  │
-                                              │  broker only     │
+                                              │                  │
+                                              │   Notifications  │
+                                              │                  │
                                               └──────────────────┘
 ```
 
