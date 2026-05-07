@@ -1,98 +1,258 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# HireFlow — Microservices Hiring Platform
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A production-shaped hiring platform built with event-driven microservices architecture. Every architectural decision in this project was made deliberately — not just to use microservices, but to understand the trade-offs behind each pattern.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## Architecture Overview
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
-
-```bash
-$ npm install
+```
+                        ┌─────────────────┐
+                        │   Client App    │
+                        └────────┬────────┘
+                                 │ HTTP
+                        ┌────────▼────────┐
+                        │   API Gateway   │  ← single entry point
+                        │   port: 3000    │    JWT auth, roles, rate limiting
+                        └────────┬────────┘
+                                 │
+          ┌──────────┬───────────┼───────────┬──────────┐
+          │          │           │           │          │
+    ┌─────▼────┐ ┌───▼────┐ ┌───▼──────┐ ┌──▼───────┐  │
+    │   Auth   │ │  Jobs  │ │  Apply   │ │Interview │  │
+    │ port:3001│ │port:3002│ │port:3003 │ │port:3004 │  │
+    └─────┬────┘ └───┬────┘ └───┬──────┘ └──┬───────┘  │
+          │          │          │            │          │
+        Auth DB   Jobs DB   Apply DB   Interview DB     │
+                                                        │
+                        ┌───────────────────────────────▼──┐
+                        │           RabbitMQ                │
+                        │      hireflow.exchange            │
+                        └───────────────────────────────┬──┘
+                                                        │
+                                              ┌─────────▼────────┐
+                                              │  Notifications   │
+                                              │  (no HTTP port)  │
+                                              │  broker only     │
+                                              └──────────────────┘
 ```
 
-## Compile and run the project
+---
+
+## Services
+
+| Service | Port | Database | Responsibility |
+|---|---|---|---|
+| API Gateway | 3000 | — | Single entry point, JWT auth, rate limiting |
+| Auth Service | 3001 | PostgreSQL :5433 | Register, login, JWT issuance |
+| Jobs Service | 3002 | PostgreSQL :5434 | Job posting and search (CQRS) |
+| Applications Service | 3003 | PostgreSQL :5435 | Apply to jobs, Saga orchestration |
+| Interviews Service | 3004 | PostgreSQL :5436 | Schedule interviews |
+| Notifications Service | — | — | Pure event consumer, emails |
+
+---
+
+## Key Architectural Decisions
+
+### Why microservices?
+Each service deploys, scales, and fails independently. A slow Notifications Service never affects job search. A Jobs Service deployment never requires restarting Auth.
+
+### Why RabbitMQ?
+Direct HTTP calls between services create runtime coupling — if Notifications is down, candidates can't apply. RabbitMQ decouples services so each operates independently. Events are consumed whenever the service is ready, not immediately.
+
+### Why local JWT verification?
+Originally Jobs Service called Auth Service over HTTP to verify tokens. This meant Jobs could not function if Auth was down. Local verification using the shared JWT_SECRET removes this runtime dependency entirely.
+
+### Why CQRS in Jobs Service?
+Reads and writes have different requirements. Job search (read) needs to be fast and return lightweight data. Job creation (write) needs careful validation. CQRS separates them so each can be optimized independently without affecting the other.
+
+### Why the Saga pattern?
+When a candidate applies, two things must happen: save the application and update the job's applicant count. These happen in two separate services with two separate databases — a single SQL transaction is impossible. The Saga pattern publishes a compensation event if any step fails, restoring data consistency without blocking the candidate's request.
+
+### Why Correlation IDs?
+A single request touches five services and produces five separate log streams. Without a shared identifier, debugging is impossible at scale. Every request gets a UUID at the Gateway that travels through every service and every RabbitMQ event, so filtering logs by one ID shows the complete story of any request.
+
+---
+
+## Patterns Used
+
+| Pattern | Where | Why |
+|---|---|---|
+| API Gateway | Gateway Service | Single entry point, centralized auth |
+| Local JWT Verification | All services | Remove Auth runtime dependency |
+| Event-driven Architecture | RabbitMQ | Async decoupling between services |
+| Saga (choreography) | Applications → Jobs → Notifications | Distributed consistency without shared DB |
+| CQRS | Jobs Service | Separate read/write concerns |
+| Data Denormalization | Applications, Interviews | Avoid cross-service DB queries |
+| Correlation IDs | All services | Full request tracing across services |
+| Dead Letter Queue | RabbitMQ | Safe retry with failure handling |
+
+---
+
+## Tech Stack
+
+- **Runtime**: Node.js
+- **Framework**: NestJS (TypeScript)
+- **Databases**: PostgreSQL + TypeORM
+- **Message Broker**: RabbitMQ
+- **Containerization**: Docker + Docker Compose
+- **Authentication**: JWT (local verification)
+- **Architecture**: Microservices, Event-driven
+
+---
+
+## Getting Started
+
+### Prerequisites
+- Docker and Docker Compose installed
+- Node.js 18+
+
+### Run the entire system with one command
 
 ```bash
-# development
-$ npm run start
+# Clone the repository
+git clone https://github.com/YOUR_USERNAME/hireflow.git
+cd hireflow
 
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+# Start everything
+docker-compose up --build
 ```
 
-## Run tests
+That's it. Docker Compose will:
+1. Start RabbitMQ and wait until healthy
+2. Start all four PostgreSQL databases and wait until healthy
+3. Start all six services in the correct order
+
+### Verify everything is running
 
 ```bash
-# unit tests
-$ npm run test
+# Check all containers
+docker-compose ps
 
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+# All should show "Up" and "healthy"
 ```
 
-## Deployment
+### RabbitMQ Management UI
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+Open [http://localhost:15672](http://localhost:15672)
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+```
+Username: hireflow
+Password: hireflow_pass
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+You can see exchanges, queues, and messages flowing in real time.
 
-## Resources
+---
 
-Check out a few resources that may come in handy when working with NestJS:
+## API Reference
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+All requests go through the Gateway on port **3000**. No other ports are exposed publicly.
 
-## Support
+### Auth
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```
+POST /auth/register    Register a new user
+POST /auth/login       Login and receive JWT token
+```
 
-## Stay in touch
+### Jobs
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```
+GET  /jobs             Browse all active jobs (public)
+GET  /jobs/:id         Get a single job (public)
+POST /jobs             Post a job (recruiter only)
+```
+
+### Applications
+
+```
+POST /applications     Apply to a job (candidate only)
+GET  /applications/my  View my applications (candidate only)
+```
+
+### Interviews
+
+```
+POST /interviews       Schedule an interview (recruiter only)
+GET  /interviews/my    View my interviews (recruiter only)
+```
+
+---
+
+## The Complete Hiring Flow
+
+```
+1. Recruiter registers and posts a job
+         ↓
+2. Candidate browses jobs and applies
+         ↓
+3. Applications Service saves application
+   → publishes application.created to RabbitMQ
+         ↓
+4. Jobs Service consumes application.created
+   → updates applicant count
+   → publishes applicant.count.updated
+         ↓
+5. Notifications Service consumes applicant.count.updated
+   → emails recruiter: "New application received"
+         ↓
+6. Recruiter reviews and schedules interview
+   → publishes interview.scheduled to RabbitMQ
+         ↓
+7. Notifications Service consumes interview.scheduled
+   → emails candidate: "Interview scheduled"
+```
+
+If any step fails — a compensation event flows backward to restore data consistency. The candidate's request is never affected.
+
+---
+
+## Debugging with Correlation IDs
+
+Every response from the Gateway includes an `x-correlation-id` header. To trace any request across all services:
+
+1. Open browser DevTools → Network tab
+2. Find the request → copy `x-correlation-id` header value
+3. Search all service logs for that ID
+4. See the complete journey of that request across all services
+
+```
+[abc-123] Gateway: POST /applications received
+[abc-123] Applications: application #4 saved ✅
+[abc-123] Jobs: applicant count updated ✅
+[abc-123] Notifications: email sent to recruiter ✅
+```
+
+---
+
+## Project Structure
+
+```
+hireflow/
+├── apps/
+│   ├── gateway/          ← API Gateway
+│   ├── auth/             ← Auth Service
+│   ├── jobs/             ← Jobs Service (CQRS)
+│   ├── applications/     ← Applications Service (Saga)
+│   ├── interviews/       ← Interviews Service
+│   └── notifications/    ← Notifications Service (broker only)
+├── libs/
+│   └── common/           ← Shared: Role enum, UserPayload, CorrelationLogger
+├── docker-compose.yml
+└── nest-cli.json
+```
+
+---
+
+## Key Learning from This Project
+
+Microservices is not an upgrade from monolith — it is a trade-off.
+
+The goal is never to eliminate all coupling. The goal is to eliminate coupling that has no real business reason. Some coupling is unavoidable because the business requires it. What microservices gives you is the ability to identify which coupling is necessary and which is accidental — and remove the accidental kind.
+
+---
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+MIT
