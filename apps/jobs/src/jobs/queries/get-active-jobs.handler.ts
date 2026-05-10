@@ -30,14 +30,25 @@ export class GetActiveJobsHandler implements IQueryHandler<GetActiveJobsQuery> {
       .where('job.isActive = :isActive', { isActive: true })
       // Select only the fields needed for the list — not the full entity.
       // This is lighter, faster, and exactly what the UI needs.
-      .select(['job.id', 'job.title', 'job.location', 'job.salaryMin', 'job.salaryMax', 'job.createdAt']);
+      .select([
+        'job.id',
+        'job.title',
+        'job.location',
+        'job.salaryMin',
+        'job.salaryMax',
+        'job.createdAt',
+      ]);
 
     if (query.location) {
-      qb.andWhere('job.location ILIKE :location', { location: `%${query.location}%` });
+      qb.andWhere('job.location ILIKE :location', {
+        location: `%${query.location}%`,
+      });
     }
 
     if (query.salaryMin) {
-      qb.andWhere('job.salaryMin >= :salaryMin', { salaryMin: query.salaryMin });
+      qb.andWhere('job.salaryMin >= :salaryMin', {
+        salaryMin: query.salaryMin,
+      });
     }
 
     return qb.getMany();

@@ -18,10 +18,14 @@ export class ApplyHandler implements ICommandHandler<ApplyCommand> {
   ) {}
 
   async execute(command: ApplyCommand): Promise<Application> {
-    const logger = new CorrelationLogger(ApplyHandler.name, command.correlationId ?? 'no-correlation');
+    const logger = new CorrelationLogger(
+      ApplyHandler.name,
+      command.correlationId ?? 'no-correlation',
+    );
 
     const job = await this.jobsClient.getJob(command.jobId);
-    if (!job.isActive) throw new BadRequestException('Job is no longer accepting applications');
+    if (!job.isActive)
+      throw new BadRequestException('Job is no longer accepting applications');
 
     const application = this.applicationRepo.create({
       jobId: job.id,
@@ -32,12 +36,18 @@ export class ApplyHandler implements ICommandHandler<ApplyCommand> {
     });
 
     const saved = await this.applicationRepo.save(application);
-    logger.log(`Application #${saved.id} created for job #${job.id} by candidate #${command.candidateId}`);
+    logger.log(
+      `Application #${saved.id} created for job #${job.id} by candidate #${command.candidateId}`,
+    );
 
-    await this.amqpConnection.publish('hireflow.exchange', 'application.created', {
-      ...saved,
-      correlationId: command.correlationId,
-    });
+    await this.amqpConnection.publish(
+      'hireflow.exchange',
+      'application.created',
+      {
+        ...saved,
+        correlationId: command.correlationId,
+      },
+    );
 
     return saved;
   }

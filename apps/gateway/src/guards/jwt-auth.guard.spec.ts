@@ -11,12 +11,16 @@ const mockConfigService = { get: jest.fn().mockReturnValue('test-secret') };
 const mockReflector = { get: jest.fn() };
 
 function makeContext(headers: Record<string, string> = {}) {
-  const request = { headers, user: undefined as any };
+  const request: { headers: Record<string, string>; user?: UserPayload } = {
+    headers,
+  };
   return {
     request,
     ctx: {
       getHandler: jest.fn(),
-      switchToHttp: jest.fn().mockReturnValue({ getRequest: jest.fn().mockReturnValue(request) }),
+      switchToHttp: jest
+        .fn()
+        .mockReturnValue({ getRequest: jest.fn().mockReturnValue(request) }),
     } as unknown as ExecutionContext,
   };
 }
@@ -64,18 +68,24 @@ describe('JwtAuthGuard', () => {
     mockReflector.get.mockReturnValue(false);
     const payload = { sub: '1', email: 'a@a.com', role: Role.CANDIDATE };
     mockJwtService.verify.mockReturnValue(payload);
-    const { ctx, request } = makeContext({ authorization: 'Bearer valid.token' });
+    const { ctx, request } = makeContext({
+      authorization: 'Bearer valid.token',
+    });
 
     const result = guard.canActivate(ctx);
 
     expect(result).toBe(true);
-    expect(mockJwtService.verify).toHaveBeenCalledWith('valid.token', { secret: 'test-secret' });
+    expect(mockJwtService.verify).toHaveBeenCalledWith('valid.token', {
+      secret: 'test-secret',
+    });
     expect(request.user).toEqual(payload);
   });
 
   it('throws UnauthorizedException when jwtService.verify throws (invalid or expired token)', () => {
     mockReflector.get.mockReturnValue(false);
-    mockJwtService.verify.mockImplementation(() => { throw new Error('jwt expired'); });
+    mockJwtService.verify.mockImplementation(() => {
+      throw new Error('jwt expired');
+    });
     const { ctx } = makeContext({ authorization: 'Bearer expired.token' });
 
     expect(() => guard.canActivate(ctx)).toThrow(UnauthorizedException);

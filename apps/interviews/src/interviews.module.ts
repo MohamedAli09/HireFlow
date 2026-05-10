@@ -10,7 +10,10 @@ import { GetMyInterviewsHandler } from './interviews/queries/get-my-interviews.h
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, envFilePath: 'apps/interviews/.env' }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: 'apps/interviews/.env',
+    }),
 
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],

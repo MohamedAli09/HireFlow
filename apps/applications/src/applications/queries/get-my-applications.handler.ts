@@ -12,6 +12,8 @@ export class GetMyApplicationsHandler implements IQueryHandler<GetMyApplications
   ) {}
 
   execute(query: GetMyApplicationsQuery): Promise<Application[]> {
-    return this.applicationRepo.find({ where: { candidateId: query.candidateId } });
+    return this.applicationRepo.find({
+      where: { candidateId: query.candidateId },
+    });
   }
 }

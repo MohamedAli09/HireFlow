@@ -46,6 +46,11 @@ import { JobsConsumer } from './jobs/jobs.consumer';
     }),
   ],
   controllers: [JobsController],
-  providers: [CreateJobHandler, GetActiveJobsHandler, GetJobByIdHandler, JobsConsumer],
+  providers: [
+    CreateJobHandler,
+    GetActiveJobsHandler,
+    GetJobByIdHandler,
+    JobsConsumer,
+  ],
 })
-export class JobsModule { }
+export class JobsModule {}

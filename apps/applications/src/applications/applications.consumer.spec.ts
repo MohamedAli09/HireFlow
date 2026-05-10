@@ -19,7 +19,10 @@ describe('ApplicationsConsumer', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ApplicationsConsumer,
-        { provide: getRepositoryToken(Application), useValue: mockApplicationRepo },
+        {
+          provide: getRepositoryToken(Application),
+          useValue: mockApplicationRepo,
+        },
       ],
     }).compile();
 
@@ -40,7 +43,9 @@ describe('ApplicationsConsumer', () => {
     });
 
     it('returns Nack(true) for transient DB errors (ECONNREFUSED)', async () => {
-      const error = Object.assign(new Error('connection refused'), { code: 'ECONNREFUSED' });
+      const error = Object.assign(new Error('connection refused'), {
+        code: 'ECONNREFUSED',
+      });
       mockApplicationRepo.update.mockRejectedValue(error);
 
       const result = await consumer.handleApplicantCountFailed(baseEvent);
@@ -50,7 +55,9 @@ describe('ApplicationsConsumer', () => {
     });
 
     it('returns Nack(false) for non-transient errors', async () => {
-      mockApplicationRepo.update.mockRejectedValue(new Error('constraint violation'));
+      mockApplicationRepo.update.mockRejectedValue(
+        new Error('constraint violation'),
+      );
 
       const result = await consumer.handleApplicantCountFailed(baseEvent);
 

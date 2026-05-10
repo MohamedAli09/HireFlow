@@ -24,7 +24,10 @@ describe('ApplyHandler', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ApplyHandler,
-        { provide: getRepositoryToken(Application), useValue: mockApplicationRepo },
+        {
+          provide: getRepositoryToken(Application),
+          useValue: mockApplicationRepo,
+        },
         { provide: AmqpConnection, useValue: mockAmqpConnection },
         { provide: JobsClient, useValue: mockJobsClient },
       ],
@@ -35,22 +38,45 @@ describe('ApplyHandler', () => {
   });
 
   it('throws BadRequestException when job is no longer accepting applications', async () => {
-    mockJobsClient.getJob.mockResolvedValue({ id: 1, title: 'Dev', recruiterId: 5, isActive: false });
+    mockJobsClient.getJob.mockResolvedValue({
+      id: 1,
+      title: 'Dev',
+      recruiterId: 5,
+      isActive: false,
+    });
 
     await expect(handler.execute(command)).rejects.toThrow(BadRequestException);
     expect(mockApplicationRepo.save).not.toHaveBeenCalled();
   });
 
   it('bubbles up NotFoundException when job does not exist', async () => {
-    mockJobsClient.getJob.mockRejectedValue(new NotFoundException('Job not found'));
+    mockJobsClient.getJob.mockRejectedValue(
+      new NotFoundException('Job not found'),
+    );
 
     await expect(handler.execute(command)).rejects.toThrow(NotFoundException);
   });
 
   it('creates application with denormalized job data and returns the saved entity', async () => {
-    const job = { id: 1, title: 'Software Engineer', recruiterId: 5, isActive: true };
-    const created = { jobId: 1, jobTitle: 'Software Engineer', recruiterId: 5, candidateId: 42, candidateEmail: 'candidate@test.com' };
-    const saved = { ...created, id: 100, status: 'applied', appliedAt: new Date() };
+    const job = {
+      id: 1,
+      title: 'Software Engineer',
+      recruiterId: 5,
+      isActive: true,
+    };
+    const created = {
+      jobId: 1,
+      jobTitle: 'Software Engineer',
+      recruiterId: 5,
+      candidateId: 42,
+      candidateEmail: 'candidate@test.com',
+    };
+    const saved = {
+      ...created,
+      id: 100,
+      status: 'applied',
+      appliedAt: new Date(),
+    };
 
     mockJobsClient.getJob.mockResolvedValue(job);
     mockApplicationRepo.create.mockReturnValue(created);
@@ -59,19 +85,33 @@ describe('ApplyHandler', () => {
 
     const result = await handler.execute(command);
 
-    expect(mockApplicationRepo.create).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mockApplicationRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: 1,
+        jobTitle: 'Software Engineer',
+        recruiterId: 5,
+        candidateId: 42,
+        candidateEmail: 'candidate@test.com',
+      }),
+    );
+    expect(result).toEqual(saved);
+  });
+
+  it('publishes application.created event with correlationId after saving', async () => {
+    const job = {
+      id: 1,
+      title: 'Software Engineer',
+      recruiterId: 5,
+      isActive: true,
+    };
+    const saved = {
+      id: 100,
       jobId: 1,
       jobTitle: 'Software Engineer',
       recruiterId: 5,
       candidateId: 42,
       candidateEmail: 'candidate@test.com',
-    }));
-    expect(result).toEqual(saved);
-  });
-
-  it('publishes application.created event with correlationId after saving', async () => {
-    const job = { id: 1, title: 'Software Engineer', recruiterId: 5, isActive: true };
-    const saved = { id: 100, jobId: 1, jobTitle: 'Software Engineer', recruiterId: 5, candidateId: 42, candidateEmail: 'candidate@test.com' };
+    };
 
     mockJobsClient.getJob.mockResolvedValue(job);
     mockApplicationRepo.create.mockReturnValue(saved);

@@ -4,8 +4,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { User } from './users/user.entity';
-import { AuthController } from './auth.controller'; 
-import { AuthService } from './auth.service';  
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
 
 @Module({
   imports: [
@@ -23,7 +23,7 @@ import { AuthService } from './auth.service';
         username: config.get('DB_USER'),
         password: config.get('DB_PASS'),
         entities: [User],
-        synchronize: true,  // auto-creates tables in dev — never use in production
+        synchronize: true, // auto-creates tables in dev — never use in production
       }),
     }),
 
@@ -40,4 +40,4 @@ import { AuthService } from './auth.service';
   controllers: [AuthController],
   providers: [AuthService],
 })
- export class AuthModule {}
+export class AuthModule {}

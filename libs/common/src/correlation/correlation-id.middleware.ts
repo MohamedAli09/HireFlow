@@ -4,11 +4,12 @@ import { Request, Response, NextFunction } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 
 declare global {
-    namespace Express {
-        interface Request {
-            correlationId?: string;
-        }
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Express {
+    interface Request {
+      correlationId?: string;
     }
+  }
 }
 
 // This middleware runs at the Gateway on every incoming request.
@@ -17,17 +18,17 @@ declare global {
 // This is the birthplace of the ID — it only gets created once per request.
 @Injectable()
 export class CorrelationIdMiddleware implements NestMiddleware {
-    use(req: Request, res: Response, next: NextFunction): void {
-        const correlationId =
-            (req.headers['x-correlation-id'] as string) ?? uuidv4();
+  use(req: Request, res: Response, next: NextFunction): void {
+    const correlationId =
+      (req.headers['x-correlation-id'] as string) ?? uuidv4();
 
-        // Attach to the request so guards and controllers can read it
-        req['correlationId'] = correlationId;
+    // Attach to the request so guards and controllers can read it
+    req['correlationId'] = correlationId;
 
-        // Also send it back in the response so the client can reference it
-        // This is crucial — if the client reports a bug, they send you this ID
-        res.setHeader('x-correlation-id', correlationId);
+    // Also send it back in the response so the client can reference it
+    // This is crucial — if the client reports a bug, they send you this ID
+    res.setHeader('x-correlation-id', correlationId);
 
-        next();
-    }
+    next();
+  }
 }

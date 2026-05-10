@@ -13,7 +13,10 @@ describe('GetMyApplicationsHandler', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         GetMyApplicationsHandler,
-        { provide: getRepositoryToken(Application), useValue: mockApplicationRepo },
+        {
+          provide: getRepositoryToken(Application),
+          useValue: mockApplicationRepo,
+        },
       ],
     }).compile();
 
@@ -30,7 +33,9 @@ describe('GetMyApplicationsHandler', () => {
 
     const result = await handler.execute(new GetMyApplicationsQuery(42));
 
-    expect(mockApplicationRepo.find).toHaveBeenCalledWith({ where: { candidateId: 42 } });
+    expect(mockApplicationRepo.find).toHaveBeenCalledWith({
+      where: { candidateId: 42 },
+    });
     expect(result).toEqual(applications);
   });
 

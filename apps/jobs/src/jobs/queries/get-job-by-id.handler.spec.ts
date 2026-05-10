@@ -35,6 +35,8 @@ describe('GetJobByIdHandler', () => {
   it('throws NotFoundException when job does not exist', async () => {
     mockJobRepo.findOne.mockResolvedValue(null);
 
-    await expect(handler.execute(new GetJobByIdQuery(99))).rejects.toThrow(NotFoundException);
+    await expect(handler.execute(new GetJobByIdQuery(99))).rejects.toThrow(
+      NotFoundException,
+    );
   });
 });

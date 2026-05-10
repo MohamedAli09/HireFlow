@@ -13,7 +13,8 @@ export class InterviewsController {
 
   @Post()
   schedule(
-    @Body() body: {
+    @Body()
+    body: {
       applicationId: number;
       candidateId: number;
       candidateEmail: string;

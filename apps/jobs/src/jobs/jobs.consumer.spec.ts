@@ -73,16 +73,26 @@ describe('JobsConsumer', () => {
 
       await consumer.handleApplicationCreated(baseEvent);
 
-      expect(mockJobRepo.increment).toHaveBeenCalledWith({ id: 1 }, 'applicantCount', 1);
+      expect(mockJobRepo.increment).toHaveBeenCalledWith(
+        { id: 1 },
+        'applicantCount',
+        1,
+      );
       expect(mockAmqpConnection.publish).toHaveBeenCalledWith(
         'hireflow.exchange',
         'applicant.count.updated',
-        expect.objectContaining({ applicationId: 10, jobId: 1, correlationId: 'corr-abc' }),
+        expect.objectContaining({
+          applicationId: 10,
+          jobId: 1,
+          correlationId: 'corr-abc',
+        }),
       );
     });
 
     it('returns Nack(true) for transient DB errors (ECONNREFUSED)', async () => {
-      const error = Object.assign(new Error('connection refused'), { code: 'ECONNREFUSED' });
+      const error = Object.assign(new Error('connection refused'), {
+        code: 'ECONNREFUSED',
+      });
       mockJobRepo.findOne.mockRejectedValue(error);
 
       const result = await consumer.handleApplicationCreated(baseEvent);

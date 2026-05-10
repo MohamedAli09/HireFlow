@@ -1,7 +1,14 @@
-import { CanActivate, ExecutionContext, Injectable, SetMetadata, UnauthorizedException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  SetMetadata,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
+import { Request } from 'express';
 import { UserPayload } from '@app/common';
 
 // This decorator marks endpoints that don't need authentication
@@ -18,11 +25,16 @@ export class JwtAuthGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     // Check if this endpoint is marked as public
-    const isPublic = this.reflector.get<boolean>('isPublic', context.getHandler());
+    const isPublic = this.reflector.get<boolean>(
+      'isPublic',
+      context.getHandler(),
+    );
     if (isPublic) return true;
 
-    const request = context.switchToHttp().getRequest();
-    const authHeader: string = request.headers['authorization'];
+    const request = context
+      .switchToHttp()
+      .getRequest<Request & { user?: UserPayload }>();
+    const authHeader = request.headers['authorization'];
 
     if (!authHeader?.startsWith('Bearer ')) {
       throw new UnauthorizedException('Missing authorization header');
@@ -31,7 +43,7 @@ export class JwtAuthGuard implements CanActivate {
     try {
       const token = authHeader.replace('Bearer ', '');
       const payload = this.jwtService.verify<UserPayload>(token, {
-        secret: this.config.get('JWT_SECRET'),
+        secret: this.config.get<string>('JWT_SECRET'),
       });
 
       // Attach decoded user to request so proxy can forward it as headers

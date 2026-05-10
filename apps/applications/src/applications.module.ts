@@ -13,7 +13,10 @@ import { ApplicationsConsumer } from './applications/applications.consumer';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, envFilePath: 'apps/applications/.env' }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: 'apps/applications/.env',
+    }),
 
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
@@ -47,6 +50,11 @@ import { ApplicationsConsumer } from './applications/applications.consumer';
     }),
   ],
   controllers: [ApplicationsController],
-  providers: [JobsClient, ApplyHandler, GetMyApplicationsHandler, ApplicationsConsumer],
+  providers: [
+    JobsClient,
+    ApplyHandler,
+    GetMyApplicationsHandler,
+    ApplicationsConsumer,
+  ],
 })
-export class ApplicationsModule { }
+export class ApplicationsModule {}

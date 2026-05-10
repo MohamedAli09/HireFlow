@@ -6,6 +6,5 @@ async function bootstrap() {
   const port = process.env.INTERVIEWS_SERVICE_PORT ?? 3002;
   await app.listen(port);
   console.log(`Interviews Service running on port ${port}`);
-
 }
-bootstrap();
+void bootstrap();

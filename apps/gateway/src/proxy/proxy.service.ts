@@ -1,4 +1,9 @@
-import { Injectable, Logger, BadGatewayException, HttpException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadGatewayException,
+  HttpException,
+} from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { AxiosRequestConfig } from 'axios';
@@ -8,14 +13,14 @@ import { UserPayload } from '@app/common';
 export class ProxyService {
   private readonly logger = new Logger(ProxyService.name);
 
-  constructor(private readonly httpService: HttpService) { }
+  constructor(private readonly httpService: HttpService) {}
 
   async forward(
     method: string,
     targetUrl: string,
     body: any,
-    user?: UserPayload,   // decoded user from JWT — may be undefined for public routes
-    correlationId?: string
+    user?: UserPayload, // decoded user from JWT — may be undefined for public routes
+    correlationId?: string,
   ): Promise<any> {
     // Build the headers we forward to the downstream service.
     // This is how services know who is making the request —
@@ -50,11 +55,20 @@ export class ProxyService {
       );
 
       return response.data;
-    } catch (err: any) {
-      if (err.response) {
-        throw new HttpException(err.response.data, err.response.status);
+    } catch (err: unknown) {
+      const error = err as {
+        response?: { data: unknown; status: number };
+        message?: string;
+      };
+      if (error.response) {
+        throw new HttpException(
+          error.response.data as object,
+          error.response.status,
+        );
       }
-      this.logger.error(`Service unreachable: ${targetUrl} — ${err.message}`);
+      this.logger.error(
+        `Service unreachable: ${targetUrl} — ${error.message ?? 'unknown error'}`,
+      );
       throw new BadGatewayException(`Downstream service unavailable`);
     }
   }

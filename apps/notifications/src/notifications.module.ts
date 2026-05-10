@@ -7,7 +7,10 @@ import { NotificationsConsumer } from './notifications/notifications.consumer';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, envFilePath: 'apps/notifications/.env' }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: 'apps/notifications/.env',
+    }),
 
     RabbitMQModule.forRootAsync({
       inject: [ConfigService],

@@ -36,13 +36,17 @@ describe('JobsClient', () => {
   });
 
   it('throws NotFoundException when downstream returns 404', async () => {
-    mockHttpService.get.mockReturnValue(throwError(() => ({ response: { status: 404 } })));
+    mockHttpService.get.mockReturnValue(
+      throwError(() => ({ response: { status: 404 } })),
+    );
 
     await expect(client.getJob(99)).rejects.toThrow(NotFoundException);
   });
 
   it('re-throws the original error for non-404 responses', async () => {
-    const serverError = { response: { status: 500, data: 'Internal Server Error' } };
+    const serverError = {
+      response: { status: 500, data: 'Internal Server Error' },
+    };
     mockHttpService.get.mockReturnValue(throwError(() => serverError));
 
     await expect(client.getJob(1)).rejects.toEqual(serverError);

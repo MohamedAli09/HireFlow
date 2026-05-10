@@ -1,3 +1,3 @@
 export interface WithCorrelation {
-    correlationId: string;
+  correlationId: string;
 }

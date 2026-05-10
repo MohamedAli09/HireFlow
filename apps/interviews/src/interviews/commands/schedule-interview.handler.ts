@@ -15,7 +15,10 @@ export class ScheduleInterviewHandler implements ICommandHandler<ScheduleIntervi
   ) {}
 
   async execute(command: ScheduleInterviewCommand): Promise<Interview> {
-    const logger = new CorrelationLogger(ScheduleInterviewHandler.name, command.correlationId ?? 'no-correlation');
+    const logger = new CorrelationLogger(
+      ScheduleInterviewHandler.name,
+      command.correlationId ?? 'no-correlation',
+    );
 
     const interview = this.interviewRepo.create({
       applicationId: command.applicationId,
@@ -28,7 +31,9 @@ export class ScheduleInterviewHandler implements ICommandHandler<ScheduleIntervi
     });
 
     const saved = await this.interviewRepo.save(interview);
-    logger.log(`Interview #${saved.id} scheduled for application #${command.applicationId}`);
+    logger.log(
+      `Interview #${saved.id} scheduled for application #${command.applicationId}`,
+    );
 
     await this.amqpConnection.publish('hireflow', 'interview.scheduled', {
       interviewId: saved.id,

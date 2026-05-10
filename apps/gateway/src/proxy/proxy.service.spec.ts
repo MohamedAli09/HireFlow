@@ -12,7 +12,11 @@ const mockHttpService = {
   delete: jest.fn(),
 };
 
-const mockUser: UserPayload = { sub: '42', email: 'a@a.com', role: Role.RECRUITER };
+const mockUser: UserPayload = {
+  sub: '42',
+  email: 'a@a.com',
+  role: Role.RECRUITER,
+};
 
 describe('ProxyService', () => {
   let service: ProxyService;
@@ -33,7 +37,11 @@ describe('ProxyService', () => {
     it('calls httpService.get for GET requests', async () => {
       mockHttpService.get.mockReturnValue(of({ data: { ok: true } }));
 
-      const result = await service.forward('GET', 'http://svc/resource', null);
+      const result: unknown = await service.forward(
+        'GET',
+        'http://svc/resource',
+        null,
+      );
 
       expect(mockHttpService.get).toHaveBeenCalledTimes(1);
       expect(result).toEqual({ ok: true });
@@ -42,10 +50,20 @@ describe('ProxyService', () => {
     it('calls httpService.post for POST requests and passes body', async () => {
       mockHttpService.post.mockReturnValue(of({ data: { id: 1 } }));
 
-      const result = await service.forward('POST', 'http://svc/resource', { name: 'job' });
+      const result: unknown = await service.forward(
+        'POST',
+        'http://svc/resource',
+        {
+          name: 'job',
+        },
+      );
 
       expect(mockHttpService.post).toHaveBeenCalledTimes(1);
-      const [url, body] = mockHttpService.post.mock.calls[0];
+      const [url, body] = mockHttpService.post.mock.calls[0] as [
+        string,
+        unknown,
+        unknown,
+      ];
       expect(url).toBe('http://svc/resource');
       expect(body).toEqual({ name: 'job' });
       expect(result).toEqual({ id: 1 });
@@ -54,10 +72,16 @@ describe('ProxyService', () => {
     it('calls httpService.patch for PATCH requests and passes body', async () => {
       mockHttpService.patch.mockReturnValue(of({ data: { updated: true } }));
 
-      await service.forward('PATCH', 'http://svc/resource', { status: 'active' });
+      await service.forward('PATCH', 'http://svc/resource', {
+        status: 'active',
+      });
 
       expect(mockHttpService.patch).toHaveBeenCalledTimes(1);
-      const [, body] = mockHttpService.patch.mock.calls[0];
+      const [, body] = mockHttpService.patch.mock.calls[0] as [
+        string,
+        unknown,
+        unknown,
+      ];
       expect(body).toEqual({ status: 'active' });
     });
 
@@ -76,7 +100,9 @@ describe('ProxyService', () => {
 
       await service.forward('GET', 'http://svc/resource', null, mockUser);
 
-      const config = mockHttpService.get.mock.calls[0][1];
+      const [[, config]] = mockHttpService.get.mock.calls as [
+        [unknown, { headers: Record<string, string> }],
+      ];
       expect(config.headers['x-user-id']).toBe('42');
       expect(config.headers['x-user-email']).toBe('a@a.com');
       expect(config.headers['x-user-role']).toBe(Role.RECRUITER);
@@ -87,7 +113,9 @@ describe('ProxyService', () => {
 
       await service.forward('GET', 'http://svc/resource', null);
 
-      const config = mockHttpService.get.mock.calls[0][1];
+      const [[, config]] = mockHttpService.get.mock.calls as [
+        [unknown, { headers: Record<string, string> }],
+      ];
       expect(config.headers['x-user-id']).toBeUndefined();
       expect(config.headers['x-user-email']).toBeUndefined();
       expect(config.headers['x-user-role']).toBeUndefined();
@@ -96,9 +124,17 @@ describe('ProxyService', () => {
     it('includes x-correlation-id header when correlationId is provided', async () => {
       mockHttpService.get.mockReturnValue(of({ data: {} }));
 
-      await service.forward('GET', 'http://svc/resource', null, undefined, 'corr-123');
+      await service.forward(
+        'GET',
+        'http://svc/resource',
+        null,
+        undefined,
+        'corr-123',
+      );
 
-      const config = mockHttpService.get.mock.calls[0][1];
+      const [[, config]] = mockHttpService.get.mock.calls as [
+        [unknown, { headers: Record<string, string> }],
+      ];
       expect(config.headers['x-correlation-id']).toBe('corr-123');
     });
 
@@ -107,14 +143,18 @@ describe('ProxyService', () => {
 
       await service.forward('GET', 'http://svc/resource', null);
 
-      const config = mockHttpService.get.mock.calls[0][1];
+      const [[, config]] = mockHttpService.get.mock.calls as [
+        [unknown, { headers: Record<string, string> }],
+      ];
       expect(config.headers['x-correlation-id']).toBeUndefined();
     });
   });
 
   describe('error handling', () => {
     it('re-throws HttpException with same status and body when downstream returns an error response', async () => {
-      const downstreamError = { response: { data: { message: 'Not found' }, status: 404 } };
+      const downstreamError = {
+        response: { data: { message: 'Not found' }, status: 404 },
+      };
       mockHttpService.get.mockReturnValue(throwError(() => downstreamError));
 
       await expect(

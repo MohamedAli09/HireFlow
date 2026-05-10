@@ -40,7 +40,9 @@ describe('GetActiveJobsHandler', () => {
 
     const result = await handler.execute(new GetActiveJobsQuery());
 
-    expect(mockQb.where).toHaveBeenCalledWith('job.isActive = :isActive', { isActive: true });
+    expect(mockQb.where).toHaveBeenCalledWith('job.isActive = :isActive', {
+      isActive: true,
+    });
     expect(mockQb.andWhere).not.toHaveBeenCalled();
     expect(result).toEqual(jobs);
   });
@@ -73,7 +75,13 @@ describe('GetActiveJobsHandler', () => {
     await handler.execute(new GetActiveJobsQuery('Cairo', 5000));
 
     expect(mockQb.andWhere).toHaveBeenCalledTimes(2);
-    expect(mockQb.andWhere).toHaveBeenCalledWith('job.location ILIKE :location', { location: '%Cairo%' });
-    expect(mockQb.andWhere).toHaveBeenCalledWith('job.salaryMin >= :salaryMin', { salaryMin: 5000 });
+    expect(mockQb.andWhere).toHaveBeenCalledWith(
+      'job.location ILIKE :location',
+      { location: '%Cairo%' },
+    );
+    expect(mockQb.andWhere).toHaveBeenCalledWith(
+      'job.salaryMin >= :salaryMin',
+      { salaryMin: 5000 },
+    );
   });
 });

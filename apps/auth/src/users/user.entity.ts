@@ -1,5 +1,10 @@
 // apps/auth/src/users/user.entity.ts
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+} from 'typeorm';
 import { Role } from '@app/common';
 
 @Entity('users')

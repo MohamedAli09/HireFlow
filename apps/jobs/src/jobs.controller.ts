@@ -1,4 +1,21 @@
-import { Controller, Get, Post, Body, Query, Param, ParseIntPipe, Headers } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Query,
+  Param,
+  ParseIntPipe,
+  Headers,
+} from '@nestjs/common';
+
+interface CreateJobBody {
+  title: string;
+  description: string;
+  location: string;
+  salaryMin?: number;
+  salaryMax?: number;
+}
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { CreateJobCommand } from './jobs/commands/create-job.command';
 import { GetActiveJobsQuery } from './jobs/queries/get-active-jobs.query';
@@ -13,10 +30,13 @@ export class JobsController {
     // It just says "here is a command/query, figure it out."
     private readonly commandBus: CommandBus,
     private readonly queryBus: QueryBus,
-  ) { }
+  ) {}
 
   @Get()
-  findAll(@Query('location') location?: string, @Query('salaryMin') salaryMin?: number) {
+  findAll(
+    @Query('location') location?: string,
+    @Query('salaryMin') salaryMin?: number,
+  ) {
     // Dispatch a query — pure read, no side effects
     return this.queryBus.execute(new GetActiveJobsQuery(location, salaryMin));
   }
@@ -28,7 +48,7 @@ export class JobsController {
 
   @Post()
   create(
-    @Body() body: any,
+    @Body() body: CreateJobBody,
     @CurrentUser() user: UserPayload,
     @Headers('x-correlation-id') correlationId: string,
   ) {

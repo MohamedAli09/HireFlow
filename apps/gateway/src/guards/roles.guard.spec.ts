@@ -20,10 +20,7 @@ describe('RolesGuard', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        RolesGuard,
-        { provide: Reflector, useValue: mockReflector },
-      ],
+      providers: [RolesGuard, { provide: Reflector, useValue: mockReflector }],
     }).compile();
 
     guard = module.get<RolesGuard>(RolesGuard);
@@ -45,6 +42,8 @@ describe('RolesGuard', () => {
   it('throws ForbiddenException when user role is not in the required roles', () => {
     mockReflector.get.mockReturnValue([Role.RECRUITER, Role.ADMIN]);
 
-    expect(() => guard.canActivate(makeContext(Role.CANDIDATE))).toThrow(ForbiddenException);
+    expect(() => guard.canActivate(makeContext(Role.CANDIDATE))).toThrow(
+      ForbiddenException,
+    );
   });
 });

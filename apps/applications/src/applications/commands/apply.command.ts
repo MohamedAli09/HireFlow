@@ -4,5 +4,5 @@ export class ApplyCommand {
     public readonly candidateId: number,
     public readonly candidateEmail: string,
     public readonly correlationId?: string,
-  ) { }
+  ) {}
 }

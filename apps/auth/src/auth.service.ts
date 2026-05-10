@@ -1,10 +1,14 @@
 // apps/auth/src/auth/auth.service.ts
-import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { User } from './users/user.entity'; 
+import { User } from './users/user.entity';
 import { RegisterDto } from './dto/register.dto';
 import { Role, UserPayload } from '@app/common';
 
@@ -17,7 +21,9 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto): Promise<{ message: string }> {
-    const existing = await this.userRepo.findOne({ where: { email: dto.email } });
+    const existing = await this.userRepo.findOne({
+      where: { email: dto.email },
+    });
     if (existing) throw new ConflictException('Email already registered');
 
     // bcrypt with cost factor 10 — strong enough, not too slow
@@ -33,7 +39,10 @@ export class AuthService {
     return { message: 'Registered successfully' };
   }
 
-  async login(email: string, password: string): Promise<{ accessToken: string }> {
+  async login(
+    email: string,
+    password: string,
+  ): Promise<{ accessToken: string }> {
     const user = await this.userRepo.findOne({ where: { email } });
 
     // Same error for "user not found" and "wrong password" — prevents email enumeration
@@ -41,13 +50,17 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const payload: UserPayload = { sub: String(user.id), email: user.email, role: user.role };
+    const payload: UserPayload = {
+      sub: String(user.id),
+      email: user.email,
+      role: user.role,
+    };
     return { accessToken: this.jwtService.sign(payload) };
   }
 
   // This endpoint is critical — other services will call it over HTTP to verify tokens.
   // It returns the decoded payload so the caller knows who this token belongs to.
-  async verifyToken(token: string): Promise<UserPayload> {
+  verifyToken(token: string): UserPayload {
     try {
       return this.jwtService.verify<UserPayload>(token);
     } catch {

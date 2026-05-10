@@ -28,10 +28,12 @@ import { RolesGuard } from './guards/roles.guard';
 
     // Rate limiting — max 100 requests per minute per IP
     // This protects ALL services at once — one config, everywhere
-    ThrottlerModule.forRoot([{
-      ttl: 60000,
-      limit: 100,
-    }]),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 100,
+      },
+    ]),
   ],
   controllers: [
     AuthController,
@@ -47,5 +49,4 @@ import { RolesGuard } from './guards/roles.guard';
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
-export class GatewayModule { }
-
+export class GatewayModule {}
