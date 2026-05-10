@@ -27,6 +27,7 @@
         "./libs/common/src/*"
       ]
     },
-    "baseUrl": "./"
+    "baseUrl": "./",
+    "types": ["jest", "node"] // 
   }
 }
