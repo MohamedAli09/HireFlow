@@ -1,32 +1,65 @@
-# docker-compose.yml
 version: '3.8'
 
 services:
-  # ─── Auth Service database ────────────────────────────────────────
+
+  # ─── Infrastructure ────────────────────────────────────────────────
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: hireflow-rabbitmq
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+    environment:
+      RABBITMQ_DEFAULT_USER: hireflow
+      RABBITMQ_DEFAULT_PASS: hireflow_pass
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: [ 'CMD', 'rabbitmq-diagnostics', 'ping' ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Databases ─────────────────────────────────────────────────────
+
   auth-db:
     image: postgres:15-alpine
+    container_name: hireflow-auth-db
     environment:
       POSTGRES_DB: auth_db
       POSTGRES_USER: auth_user
       POSTGRES_PASSWORD: auth_pass
     ports:
-      - '5433:5432' # host:container — 5433 so it doesn't clash with a local postgres
+      - '5433:5432'
     volumes:
       - auth_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ 'CMD-SHELL', 'pg_isready -U auth_user -d auth_db' ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # ─── Jobs Service database ────────────────────────────────────────
   jobs-db:
     image: postgres:15-alpine
+    container_name: hireflow-jobs-db
     environment:
       POSTGRES_DB: jobs_db
       POSTGRES_USER: jobs_user
       POSTGRES_PASSWORD: jobs_pass
     ports:
-      - '5434:5432' # different host port — completely separate postgres instance
+      - '5434:5432'
     volumes:
       - jobs_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ 'CMD-SHELL', 'pg_isready -U jobs_user -d jobs_db' ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   applications-db:
     image: postgres:15-alpine
+    container_name: hireflow-applications-db
     environment:
       POSTGRES_DB: applications_db
       POSTGRES_USER: applications_user
@@ -35,8 +68,15 @@ services:
       - '5435:5432'
     volumes:
       - applications_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ 'CMD-SHELL', 'pg_isready -U applications_user -d applications_db' ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   interviews-db:
     image: postgres:15-alpine
+    container_name: hireflow-interviews-db
     environment:
       POSTGRES_DB: interviews_db
       POSTGRES_USER: interviews_user
@@ -45,21 +85,148 @@ services:
       - '5436:5432'
     volumes:
       - interviews_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ 'CMD-SHELL', 'pg_isready -U interviews_user -d interviews_db' ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  rabbitmq:
-    image: rabbitmq:3-management-alpine
-    ports:
-      - '5672:5672' # the port services use to publish and consume
-      - '15672:15672' # management UI — open http://localhost:15672 in your browser
+  # ─── Services ──────────────────────────────────────────────────────
+
+  auth:
+    build:
+      context: .
+      dockerfile: apps/auth/Dockerfile
+    container_name: hireflow-auth
+    # No ports exposed to host — only gateway can reach this
+    expose:
+      - '3001'
     environment:
-      RABBITMQ_DEFAULT_USER: hireflow
-      RABBITMQ_DEFAULT_PASS: hireflow_pass
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
+      DB_HOST: auth-db
+      DB_PORT: 5432
+      DB_NAME: auth_db
+      DB_USER: auth_user
+      DB_PASS: auth_pass
+      JWT_SECRET: hireflow-super-secret-change-in-production
+      JWT_EXPIRES_IN: 7d
+      AUTH_SERVICE_PORT: 3001
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  jobs:
+    build:
+      context: .
+      dockerfile: apps/jobs/Dockerfile
+    container_name: hireflow-jobs
+    expose:
+      - '3002'
+    environment:
+      DB_HOST: jobs-db
+      DB_PORT: 5432
+      DB_NAME: jobs_db
+      DB_USER: jobs_user
+      DB_PASS: jobs_pass
+      JWT_SECRET: hireflow-super-secret-change-in-production
+      JOBS_SERVICE_PORT: 3002
+      RABBITMQ_URL: amqp://hireflow:hireflow_pass@rabbitmq:5672
+    depends_on:
+      jobs-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  applications:
+    build:
+      context: .
+      dockerfile: apps/applications/Dockerfile
+    container_name: hireflow-applications
+    expose:
+      - '3003'
+    environment:
+      DB_HOST: applications-db
+      DB_PORT: 5432
+      DB_NAME: applications_db
+      DB_USER: applications_user
+      DB_PASS: applications_pass
+      JWT_SECRET: hireflow-super-secret-change-in-production
+      APPLICATIONS_SERVICE_PORT: 3003
+      JOBS_SERVICE_URL: http://jobs:3002
+      RABBITMQ_URL: amqp://hireflow:hireflow_pass@rabbitmq:5672
+    depends_on:
+      applications-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      jobs:
+        condition: service_started
+    restart: unless-stopped
+
+  interviews:
+    build:
+      context: .
+      dockerfile: apps/interviews/Dockerfile
+    container_name: hireflow-interviews
+    expose:
+      - '3004'
+    environment:
+      DB_HOST: interviews-db
+      DB_PORT: 5432
+      DB_NAME: interviews_db
+      DB_USER: interviews_user
+      DB_PASS: interviews_pass
+      INTERVIEWS_SERVICE_PORT: 3004
+      RABBITMQ_URL: amqp://hireflow:hireflow_pass@rabbitmq:5672
+    depends_on:
+      interviews-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  notifications:
+    build:
+      context: .
+      dockerfile: apps/notifications/Dockerfile
+    container_name: hireflow-notifications
+    # No expose — no HTTP port at all, broker only
+    environment:
+      RABBITMQ_URL: amqp://hireflow:hireflow_pass@rabbitmq:5672
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  gateway:
+    build:
+      context: .
+      dockerfile: apps/gateway/Dockerfile
+    container_name: hireflow-gateway
+    # The ONLY service exposed to the outside world
+    ports:
+      - '3000:3000'
+    environment:
+      GATEWAY_PORT: 3000
+      JWT_SECRET: hireflow-super-secret-change-in-production
+      AUTH_SERVICE_URL: http://auth:3001
+      JOBS_SERVICE_URL: http://jobs:3002
+      APPLICATIONS_SERVICE_URL: http://applications:3003
+      INTERVIEWS_SERVICE_URL: http://interviews:3004
+    depends_on:
+      - auth
+      - jobs
+      - applications
+      - interviews
+      - notifications
+    restart: unless-stopped
+
+# ─── Volumes ───────────────────────────────────────────────────────
 
 volumes:
   auth_db_data:
   jobs_db_data:
-  rabbitmq_data:
   applications_db_data:
   interviews_db_data:
+  rabbitmq_data:
